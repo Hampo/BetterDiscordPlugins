@@ -1,4 +1,4 @@
-//META{"name":"AvatarIconViewerV2","authorId":"192251117948633088","donate":"https://www.paypal.me/Proddy3","website":"https://www.zhbot.org"}*//
+//META{"name":"AvatarIconViewerV2","authorId":"192251117948633088","donate":"https://www.paypal.me/Proddy3","website":"https://www.zhbot.org","source":"https://raw.githubusercontent.com/Hampo/BetterDiscordPlugins/main/AvatarIconViewerV2.plugin.js"}*//
 
 module.exports = (() => {
 	const config =
