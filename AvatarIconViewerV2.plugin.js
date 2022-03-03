@@ -7,11 +7,17 @@ module.exports = (() => {
 		{
 			name: "AvatarIconViewerV2",
 			author: "Proddy",
-			version: "1",
+			version: "1.1",
 			description: "A remake of Metalloriff's AvatarIconViewer using BDFDB to resolve the context menu issues. Allows you to view server icons, user avatars and emotes in fullscreen view the context menu, or copy the link to them."
+		},
+		"changeLog": {
+			"improved": {
+				"Settings": "Improved setting descriptions",
+				"Internals": "Improved internals to stop repeating code"
+			}
 		}
 	};
-
+	
 	return !window.BDFDB_Global || (!window.BDFDB_Global.loaded && !window.BDFDB_Global.started) ? class {
 		getName () {return config.info.name;}
 		getAuthor () {return config.info.author;}
@@ -42,27 +48,6 @@ module.exports = (() => {
 	} : (([Plugin, BDFDB]) => {
 		var settings = {};
 		
-		function openImageModal(url) {
-			BDFDB.LibraryModules.ModalUtils.openModal(modalData => {
-				return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalRoot, Object.assign({
-					className: BDFDB.disCN.imagemodal
-				}, modalData, {
-					size: BDFDB.LibraryComponents.ModalComponents.ModalSize.DYNAMIC,
-					"aria-label": BDFDB.LanguageUtils.LanguageStrings.IMAGE,
-					children: BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ImageModal, {
-						animated: false,
-						src: url,
-						original: url,
-						width: 2048,
-						height: 2048,
-						className: BDFDB.disCN.imagemodalimage,
-						shouldAnimate: true,
-						renderLinkComponent: props => BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Anchor, props)
-					})
-				}), true);
-			});
-		}
-		
 		const formatURL = url =>
 				url == null || url.length == 0
 					? null
@@ -70,13 +55,49 @@ module.exports = (() => {
 						? url.replace(".webp", ".gif").replace(".png", ".gif")
 						: url).split("?")[0] + "?size=2048";
 		
+		function createEntries(url, type) {
+			return [
+				BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
+					label: "View " + type,
+					id: BDFDB.ContextMenuUtils.createItemId(this.name, "view-" + type),
+					action: _ => {
+						BDFDB.LibraryModules.ModalUtils.openModal(modalData => {
+							return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalRoot, Object.assign({
+								className: BDFDB.disCN.imagemodal
+							}, modalData, {
+								size: BDFDB.LibraryComponents.ModalComponents.ModalSize.DYNAMIC,
+								"aria-label": BDFDB.LanguageUtils.LanguageStrings.IMAGE,
+								children: BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ImageModal, {
+									animated: false,
+									src: url,
+									original: url,
+									width: 2048,
+									height: 2048,
+									className: BDFDB.disCN.imagemodalimage,
+									shouldAnimate: true,
+									renderLinkComponent: props => BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Anchor, props)
+								})
+							}), true);
+						});
+					}
+				}),
+				BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
+					label: "Copy " + type + " Link",
+					id: BDFDB.ContextMenuUtils.createItemId(this.name, "copy-" + type),
+					action: _ => {
+						BDFDB.LibraryRequires.electron.clipboard.write({text:url});
+					}
+				})
+			];
+		}
+		
 		return class AvatarIconViewerV2 extends Plugin {
 			onLoad() {
 				this.defaults = {
 					settings: {
-						avatars:		{value:true, 				description:"Add link to avatars"},
-						emojis:		{value:true, 				description:"Add link to emojis"},
-						guilds:		{value:true, 				description:"Add link to guilds"}
+						avatars:	{value:true, 	description:"Add context menu entries for Avatars"},
+						emojis:		{value:true, 	description:"Add context menu entries for Emojis"},
+						guilds:		{value:true, 	description:"Add context menu entries for Guild Icons"}
 					}
 				};
 			}
@@ -88,7 +109,7 @@ module.exports = (() => {
 			onStop() {
 				this.forceUpdateAll();
 			}
-
+			
 			getSettingsPanel (collapseStates = {}) {
 				let settingsPanel, settingsItems = [];
 				
@@ -103,14 +124,14 @@ module.exports = (() => {
 				
 				return settingsPanel = BDFDB.PluginUtils.createSettingsPanel(this, settingsItems);
 			}
-
+			
 			onSettingsClosed () {
 				if (this.SettingsUpdated) {
 					delete this.SettingsUpdated;
 					this.forceUpdateAll();
 				}
 			}
-		
+			
 			forceUpdateAll () {
 				settings = BDFDB.DataUtils.get(this, "settings");
 			}
@@ -118,22 +139,7 @@ module.exports = (() => {
 			onMessageContextMenu (e) {
 				let target = e.instance.props.target;
 				if (target && target.src && settings.emojis) {
-					let entries = [
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "View Emoji",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "view-emoji"),
-							action: _ => {
-								openImageModal(target.src);
-							}
-						}),
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "Copy Emoji Link",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "copy-emoji"),
-							action: _ => {
-								BDFDB.LibraryRequires.electron.clipboard.write({text:target.src});
-							}
-						})
-					];
+					let entries = createEntries(target.src, "Emoji");
 					let [children, index] = BDFDB.ContextMenuUtils.findItem(e.returnvalue, {id: "devmode-copy-id", group: true});
 					children.splice(index > -1 ? index : children.length, 0, BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuGroup, {
 						children: entries
@@ -144,23 +150,7 @@ module.exports = (() => {
 			onUserContextMenu (e) {
 				if (e.subType == "useUserProfileItem" && e.instance.props.id && settings.avatars)
 				{
-					let avatarURL = formatURL(BDFDB.UserUtils.getAvatar(e.instance.props.id));
-					let entries = [
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "View Avatar",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "view-avatar"),
-							action: _ => {
-								openImageModal(avatarURL);
-							}
-						}),
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "Copy Avatar Link",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "copy-avatar"),
-							action: _ => {
-								BDFDB.LibraryRequires.electron.clipboard.write({text:avatarURL});
-							}
-						})
-					];
+					let entries = createEntries(formatURL(BDFDB.UserUtils.getAvatar(e.instance.props.id)), "Avatar");
 					e.returnvalue.push(entries);
 				}
 			}
@@ -168,23 +158,7 @@ module.exports = (() => {
 			onGuildContextMenu (e) {
 				let guild = e.instance.props.guild;
 				if (guild && settings.guilds) {
-					let iconURL = formatURL(guild.getIconURL(2048));
-					let entries = [
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "View Icon",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "view-icon"),
-							action: _ => {
-								openImageModal(iconURL);
-							}
-						}),
-						BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuItem, {
-							label: "Copy Icon Link",
-							id: BDFDB.ContextMenuUtils.createItemId(this.name, "copy-icon"),
-							action: _ => {
-								BDFDB.LibraryRequires.electron.clipboard.write({text:iconURL});
-							}
-						})
-					];
+					let entries = createEntries(formatURL(guild.getIconURL()), "Icon");
 					let [children, index] = BDFDB.ContextMenuUtils.findItem(e.returnvalue, {id: "devmode-copy-id", group: true});
 					children.splice(index > -1 ? index : children.length, 0, BDFDB.ContextMenuUtils.createItem(BDFDB.LibraryComponents.MenuItems.MenuGroup, {
 						children: entries
