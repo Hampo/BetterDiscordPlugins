@@ -7,13 +7,12 @@ module.exports = (() => {
 		{
 			name: "AvatarIconViewerV2",
 			author: "Proddy",
-			version: "1.1",
+			version: "1.2",
 			description: "A remake of Metalloriff's AvatarIconViewer using BDFDB to resolve the context menu issues. Allows you to view server icons, user avatars and emotes in fullscreen view the context menu, or copy the link to them."
 		},
 		"changeLog": {
 			"improved": {
-				"Settings": "Improved setting descriptions",
-				"Internals": "Improved internals to stop repeating code"
+				"Guild Avatars": "Added support for guild-specific avatars"
 			}
 		}
 	};
@@ -150,7 +149,13 @@ module.exports = (() => {
 			onUserContextMenu (e) {
 				if (e.subType == "useUserProfileItem" && e.instance.props.id && settings.avatars)
 				{
-					let entries = createEntries(formatURL(BDFDB.UserUtils.getAvatar(e.instance.props.id)), "Avatar");
+					let avatarURL = BDFDB.UserUtils.getAvatar(e.instance.props.id);
+					let entries = createEntries(formatURL(avatarURL), "Avatar");
+					if (e.instance.props.user && e.arguments.length >= 2 && e.instance.props.user.guildMemberAvatars[e.arguments[1]])
+					{
+						avatarURL = `https://cdn.discordapp.com/guilds/${e.arguments[1]}/users/${e.instance.props.id}/avatars/${e.instance.props.user.guildMemberAvatars[e.arguments[1]]}.webp`;
+						entries.push(createEntries(formatURL(avatarURL), "Guild Avatar"));
+					}
 					e.returnvalue.push(entries);
 				}
 			}
